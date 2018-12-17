@@ -1,0 +1,142 @@
+---
+title: "IGP Level 1 and 2 Facilities"
+author: "Chris Lopez"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+library(leaflet)
+library(shiny)
+library(dplyr)
+library(readxl)
+library(DT)
+library(shinydashboard)
+library(ggplot2)
+library(plotly)
+library(treemap)
+library(highcharter)
+
+sites <- read_excel("data/smarts_data_2018-12-14.xls", col_types = "text") %>% 
+  as.data.frame()
+
+sites$Latitude <- as.numeric(sites$Latitude)
+sites$Longitude <- as.numeric(sites$Longitude)
+names(sites) <- make.names(names(sites))
+sites$Level <- factor(sites$Level)
+```
+
+Inputs {.sidebar data-width=300}
+-----------------------------------------------------------------------
+
+```{r}
+ selectInput("Pollutant", label = h3("Pollutant"), 
+    choices = list("Aluminum, Total (Recoverable)" = "Aluminum, Total (Recoverable)",
+                   "Ammonia, Total (as N)" = "Ammonia, Total (as N)",             
+                   "Biochemical Oxygen Demand (BOD) (5-day @ 20 Deg. C)" = 
+                     "Biochemical Oxygen Demand (BOD) (5-day @ 20 Deg. C)",
+                   "Cadmium, Total (Recoverable)" = "Cadmium, Total (Recoverable)",
+                   "Chemical Oxygen Demand (COD)" = "Chemical Oxygen Demand (COD)",
+                   "Copper, Total (Recoverable)" = "Copper, Total (Recoverable)",
+                   "Cyanide, Total (as CN)" = "Cyanide, Total (as CN)",                     
+                   "Iron, Total (Recoverable)" = "Iron, Total (Recoverable)",
+                   "Lead, Total (Recoverable)" = "Lead, Total (Recoverable)",           
+                   "Magnesium, Total (Recoverable)" = "Magnesium, Total (Recoverable)", 
+                   "Nitrite Plus Nitrate (as N)" = "Nitrite Plus Nitrate (as N)",            
+                   "Oil and Grease" = "Oil and Grease", 
+                   "pH" = "pH",
+                   "Phosphorus, Total (as P)" = "Phosphorus, Total (as P)", 
+                   "Selenium, Total (Recoverable)" = "Selenium, Total (Recoverable)",       
+                   "Total Suspended Solids (TSS)" = "Total Suspended Solids (TSS)",         
+                   "Zinc, Total (Recoverable)" = "Zinc, Total (Recoverable)"), 
+    selected = "Aluminum, Total (Recoverable)")
+```
+
+The map right will display all Industrial General Permit (IGP) facilities in Region 4 that are at level 1 or level 2 for the pollutant selected in the drop down menu above. 
+
+Data was taken from SMARTS.
+
+
+
+
+Row {.tabset data-height=650}
+-----------------------------------------------------------------------
+
+### Map of Facilities
+    
+```{r}
+selected_data <- sites
+
+mapData <- reactive({
+    selected_data <- sites %>%
+      filter(Pollutant == as.character(input$Pollutant))
+    selected_data
+  })
+
+pollutantFilter <- reactive({
+  input$Pollutant
+})
+
+renderLeaflet({
+  leaflet(mapData()) %>% addTiles() %>%
+      addCircles(lng = ~Longitude, lat = ~Latitude,
+             opacity = 0.90, radius = 12, weight = 8,
+             label = ~Facility,
+             popup = ~paste0('<b>', Facility, '</b></br>',
+                            'WDID: ', WDID, '</br>',
+                            Facility.Address, '</br>',
+                            Facility.City, ', CA ',
+                            Facility.Zip, '</br>',
+                            '<i>', Pollutant, '</br>',
+                            Level, '</i>'))
+})
+```
+
+### Table of Facilities
+
+```{r}
+renderDataTable({
+  DT::datatable(mapData(),
+                  options = list(pageLength = 10, scrollY = "275px", paging = FALSE, scrollX = "450"),
+                  rownames = FALSE)
+})
+
+```
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+
+### Bar Graph
+
+```{r}
+
+renderPlot({
+  ggplot(mapData(), aes(Level)) +
+    geom_bar(stat="count", aes(fill = Level)) +
+    coord_flip() +
+    ggtitle(paste0("Count of Level 1 and 2 Facilities")) +
+    theme_classic() +
+    theme(legend.position = "bottom") +
+    scale_fill_manual(values=c("orange", "red"))
+})
+
+```
+
+### Pollutant Treemap
+
+```{r}
+
+treedata <- sites %>%
+  group_by(Pollutant, Level) %>% 
+  summarise(Total = n()) 
+  
+tm <- treemap(treedata, index = c("Pollutant"), vSize = "Total")
+
+highchart() %>%
+  hc_add_series_treemap(tm, allowDrillToNode = TRUE)
+
+```
