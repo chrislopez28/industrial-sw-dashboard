@@ -136,7 +136,7 @@ treedata <- sites %>%
   
 tm <- treemap(treedata, index = c("Pollutant"), vSize = "Total")
 
-highchart() %>%
-  hc_add_series_treemap(tm, allowDrillToNode = TRUE)
+#highchart() %>%
+#  hc_add_series_treemap(tm, allowDrillToNode = TRUE)
 
 ```
