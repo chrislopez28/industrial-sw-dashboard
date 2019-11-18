@@ -34,8 +34,15 @@ Inputs {.sidebar data-width=300}
 -----------------------------------------------------------------------
 
 ```{r}
- selectInput("Pollutant", label = h3("Pollutant"), 
-    choices = list("Aluminum, Total (Recoverable)" = "Aluminum, Total (Recoverable)",
+ shiny::selectInput("Level", label = h3("Level"), 
+    choices = list("All Level 1 and Level 2 Facilities", "Level 1", "Level 2"), 
+    selected = "All Level 1 and Level 2 Facilities")
+```
+
+```{r}
+ shiny::selectInput("Pollutant", label = h3("Pollutant"), 
+    choices = list("All Pollutants" = "All Pollutants",
+                   "Aluminum, Total (Recoverable)" = "Aluminum, Total (Recoverable)",
                    "Ammonia, Total (as N)" = "Ammonia, Total (as N)",             
                    "Biochemical Oxygen Demand (BOD) (5-day @ 20 Deg. C)" = 
                      "Biochemical Oxygen Demand (BOD) (5-day @ 20 Deg. C)",
@@ -46,21 +53,19 @@ Inputs {.sidebar data-width=300}
                    "Iron, Total (Recoverable)" = "Iron, Total (Recoverable)",
                    "Lead, Total (Recoverable)" = "Lead, Total (Recoverable)",           
                    "Magnesium, Total (Recoverable)" = "Magnesium, Total (Recoverable)", 
-                   "Nitrite Plus Nitrate (as N)" = "Nitrite Plus Nitrate (as N)",            
+                   "Nitrite Plus Nitrate (as N)" = "Nitrite Plus Nitrate (as N)", 
                    "Oil and Grease" = "Oil and Grease", 
                    "pH" = "pH",
                    "Phosphorus, Total (as P)" = "Phosphorus, Total (as P)", 
                    "Selenium, Total (Recoverable)" = "Selenium, Total (Recoverable)",       
                    "Total Suspended Solids (TSS)" = "Total Suspended Solids (TSS)",         
                    "Zinc, Total (Recoverable)" = "Zinc, Total (Recoverable)"), 
-    selected = "Aluminum, Total (Recoverable)")
+    selected = "All Pollutants")
 ```
 
-The map right will display all Industrial General Permit (IGP) facilities in Region 4 that are at level 1 or level 2 for the pollutant selected in the drop down menu above. 
+This app displays facilities enrolled under the [Industrial General Permit](https://www.waterboards.ca.gov/water_issues/programs/stormwater/industrial.html) that have had discharges exceeding the permit's numeric action levels (NALs). Facilities that have violated NALs for a pollutant are elevated to "Level 1" and have to develop an Exceedance Response Action Level 1 Report. Facilities that continue to exceed NALs for a pollutant are elevated to "Level 2" and must complete an Exceedance Response Action Level 2 Action Plan.
 
-Data was taken from SMARTS.
-
-
+Data was exported from [SMARTS](https://smarts.waterboards.ca.gov) on December 14, 2018.
 
 
 Row {.tabset data-height=650}
@@ -71,35 +76,82 @@ Row {.tabset data-height=650}
 ```{r}
 selected_data <- sites
 
-mapData <- reactive({
+mapData <- shiny::reactive({
+  if (as.character(input$Level) == "All Level 1 and Level 2 Facilities") {
+    
+  } else {
     selected_data <- sites %>%
-      filter(Pollutant == as.character(input$Pollutant))
-    selected_data
-  })
+      dplyr::filter(Level == as.character(input$Level))
+  }
+  
+  if (as.character(input$Pollutant) == "All Pollutants") {
+    
+  } else {
+    selected_data <- selected_data %>%
+      dplyr::filter(Pollutant == as.character(input$Pollutant))
+  }
 
-pollutantFilter <- reactive({
+  selected_data
+    
+})
+
+# summaryData <- reactive({
+#   mapData() %>%
+#     dplyr::group_by(Primary.SIC.Code) %>%
+#     dplyr::summarize(
+#       count = n())
+# })
+
+graphData <- shiny::reactive({
+  sites %>%
+    dplyr::filter(Pollutant == as.character(input$Pollutant))
+})
+
+levelFilter <- shiny::reactive({
+  input$Level
+})
+
+pollutantFilter <- shiny::reactive({
   input$Pollutant
 })
 
-renderLeaflet({
-  leaflet(mapData()) %>% addTiles() %>%
-      addCircles(lng = ~Longitude, lat = ~Latitude,
-             opacity = 0.90, radius = 12, weight = 8,
-             label = ~Facility,
-             popup = ~paste0('<b>', Facility, '</b></br>',
+leaflet::renderLeaflet({
+  if (nrow(mapData()) == 0) {
+    m <- leaflet() %>%
+      addTiles()
+  } else {
+    m <- leaflet(mapData()) %>%
+      addTiles() %>%
+      addMarkers(clusterOptions = markerClusterOptions(),
+                 popup = ~paste0('<b>', Facility, '</b></br>',
                             'WDID: ', WDID, '</br>',
                             Facility.Address, '</br>',
                             Facility.City, ', CA ',
                             Facility.Zip, '</br>',
                             '<i>', Pollutant, '</br>',
                             Level, '</i>'))
+  }
+  
+  m %>% setView(-118.2437, 34.0522, zoom = 8)
+  
+  # leaflet(mapData()) %>% addTiles() %>%
+  #     addCircles(lng = ~Longitude, lat = ~Latitude,
+  #            opacity = 0.90, radius = 12, weight = 8,
+  #            label = ~Facility,
+  #            popup = ~paste0('<b>', Facility, '</b></br>',
+  #                           'WDID: ', WDID, '</br>',
+  #                           Facility.Address, '</br>',
+  #                           Facility.City, ', CA ',
+  #                           Facility.Zip, '</br>',
+  #                           '<i>', Pollutant, '</br>',
+  #                           Level, '</i>'))
 })
 ```
 
 ### Table of Facilities
 
 ```{r}
-renderDataTable({
+DT::renderDataTable({
   DT::datatable(mapData(),
                   options = list(pageLength = 10, scrollY = "275px", paging = FALSE, scrollX = "450"),
                   rownames = FALSE)
@@ -114,14 +166,14 @@ Row {data-height=350}
 
 ```{r}
 
-renderPlot({
-  ggplot(mapData(), aes(Level)) +
-    geom_bar(stat="count", aes(fill = Level)) +
-    coord_flip() +
-    ggtitle(paste0("Count of Level 1 and 2 Facilities")) +
-    theme_classic() +
-    theme(legend.position = "bottom") +
-    scale_fill_manual(values=c("orange", "red"))
+shiny::renderPlot({
+  ggplot2::ggplot(mapData(), aes(Level)) +
+    ggplot2::geom_bar(stat="count", aes(fill = Level)) +
+    ggplot2::coord_flip() +
+    ggplot2::ggtitle(paste0("Count of Level 1 and 2 Facilities")) +
+    ggplot2::theme_classic() +
+    ggplot2::theme(legend.position = "bottom") +
+    ggplot2::scale_fill_manual(values=c("orange", "red"))
 })
 
 ```
@@ -130,13 +182,30 @@ renderPlot({
 
 ```{r}
 
-treedata <- sites %>%
-  group_by(Pollutant, Level) %>% 
-  summarise(Total = n()) 
-  
-tm <- treemap(treedata, index = c("Pollutant"), vSize = "Total")
+# summary <- mapData() %>% 
+#   dplyr::group_by(Primary.SIC.Code) %>%
+#   dplyr::summarize(
+#     count = n()
+#   )
 
-#highchart() %>%
-#  hc_add_series_treemap(tm, allowDrillToNode = TRUE)
+# summary <- reactive({
+#   summary <- summaryData()
+#   summary
+# })
+# 
+# pl <- ggplot2::ggplot(summary) +
+#   geom_bar(stat="count", aes(fill = Primary.SIC.Code)) +
+#   coord_flip() +
+#   ggtitle(paste0("Count of Level 1 and 2 Facilities")) +
+#   theme_classic() +
+#   theme(legend.position = "bottom")
+# 
+
+treedata <- sites %>%
+  dplyr::group_by(Pollutant, Level) %>%
+  dplyr::summarise(Total = n())
+
+tm <- treemap::treemap(treedata, index = c("Pollutant"), vSize = "Total")
+
 
 ```
