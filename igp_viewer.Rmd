@@ -48,7 +48,8 @@ Inputs {.sidebar data-width=300}
 
 ```{r}
  shiny::selectInput("Facilities", label = h4("Facilities"), 
-    choices = list("All Active Permitted Facilities", "All Facilities with Level 1 or 2 Pollutants"), 
+    choices = list("All Active Permitted Facilities", "All Facilities at Level 1 or 2 for a Pollutant",
+                   "All Facilities at Level 2 for a Pollutant"), 
     selected = "All Active Permitted Facilities")
 ```
 
@@ -95,6 +96,11 @@ mapData <- shiny::reactive({
   } else {
     selected_data <- sites %>%
       dplyr::filter(!is.na(LevPoll))
+    
+    if (as.character(input$Facilities) == "All Facilities at Level 2 for a Pollutant") {
+      selected_data <- selected_data %>%
+        dplyr::filter(grepl("Level 2", LevPoll))
+    }
   }
   
   if (as.character(input$Pollutant) == "All Pollutants") {
@@ -184,10 +190,14 @@ DT::renderDataTable({
 
 ```
 
-### Pollutant Treemap
+### Facility Count
 
 ```{r}
 
-
-
+renderValueBox({
+  df <- mapData() %>%
+    nrow()
+  valueBox(df, paste0("Number of Facilities - ", input$Facilities, 
+                     " - ", input$Pollutant))
+})
 ```
