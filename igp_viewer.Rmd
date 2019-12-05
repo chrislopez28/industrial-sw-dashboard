@@ -167,8 +167,9 @@ leaflet::renderLeaflet({
 
 ```{r}
 DT::renderDataTable({
-  DT::datatable(mapData(),
-                  options = list(pageLength = 10, scrollY = "275px", paging = FALSE, scrollX = "450"),
+  DT::datatable(mapData(), 
+                  options = list(pageLength = 10, scrollY = "275px", 
+                                 paging = FALSE, scrollX = "450"),
                   rownames = FALSE)
 })
 
@@ -176,6 +177,18 @@ DT::renderDataTable({
 
 Row {data-height=350}
 -----------------------------------------------------------------------
+
+### Facility Count
+
+```{r}
+
+renderValueBox({
+  facility_count <- mapData() %>% nrow()
+  valueBox(facility_count, paste0("Number of Facilities - ", input$Facilities, 
+                                  " - ", input$Pollutant), 
+           color = "light-blue")
+})
+```
 
 ### Number of Facilities by Standard Industrial Classification (SIC) Code
 
@@ -190,14 +203,3 @@ DT::renderDataTable({
 
 ```
 
-### Facility Count
-
-```{r}
-
-renderValueBox({
-  df <- mapData() %>%
-    nrow()
-  valueBox(df, paste0("Number of Facilities - ", input$Facilities, 
-                     " - ", input$Pollutant))
-})
-```
