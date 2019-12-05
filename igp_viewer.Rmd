@@ -12,14 +12,13 @@ runtime: shiny
 ```{r global, include=FALSE}
 library(leaflet)
 library(shiny)
+library(plyr)
 library(dplyr)
 library(readxl)
 library(DT)
 library(shinydashboard)
 library(ggplot2)
 library(plotly)
-library(treemap)
-library(highcharter)
 
 # Load polygons of watershed management areas
 wma <- geojsonio::geojson_read("json/wma.json", what = "sp")
@@ -33,45 +32,47 @@ pal <- colorFactor(c("#1F77B4", "#AEC7E8", "#FF7F0E", "#FFBB78",
                    NULL)
 
 # Load csv of IGP facility data
-sites <- read_excel("data/smarts_data_2019-12-04.xls", col_types = "text") %>% 
-  as.data.frame()
+sites <- readRDS("data/facility-data-2019-12-04.RDS")
+  
+# read_excel("data/smarts_data_2019-12-04.xls", col_types = "text") %>% as.data.frame()
 
-sites$Latitude <- as.numeric(sites$Latitude)
-sites$Longitude <- as.numeric(sites$Longitude)
-names(sites) <- make.names(names(sites))
-sites$Level <- factor(sites$Level)
+
+sites$Latitude <- as.numeric(sites$FACILITY_LATITUDE)
+sites$Longitude <- as.numeric(sites$FACILITY_LONGITUDE)
+#names(sites) <- make.names(names(sites))
+#sites$Level <- factor(sites$Level)
 ```
 
 Inputs {.sidebar data-width=300}
 -----------------------------------------------------------------------
 
 ```{r}
- shiny::selectInput("Level", label = h3("Level"), 
-    choices = list("All Level 1 and Level 2 Facilities", "Level 1", "Level 2"), 
-    selected = "All Level 1 and Level 2 Facilities")
+ shiny::selectInput("Facilities", label = h4("Facilities"), 
+    choices = list("All Active Permitted Facilities", "All Facilities with Level 1 or 2 Pollutants"), 
+    selected = "All Active Permitted Facilities")
 ```
 
 ```{r}
- shiny::selectInput("Pollutant", label = h3("Pollutant"), 
+ shiny::selectInput("Pollutant", label = h4("Pollutant"), 
     choices = list("All Pollutants" = "All Pollutants",
-                   "Aluminum, Total (Recoverable)" = "Aluminum, Total (Recoverable)",
-                   "Ammonia, Total (as N)" = "Ammonia, Total (as N)",             
+                   "Aluminum, Total (Recoverable)" = "Aluminum, Total",
+                   "Ammonia, Total (as N)" = "Ammonia, Total",             
                    "Biochemical Oxygen Demand (BOD) (5-day @ 20 Deg. C)" = 
-                     "Biochemical Oxygen Demand (BOD) (5-day @ 20 Deg. C)",
-                   "Cadmium, Total (Recoverable)" = "Cadmium, Total (Recoverable)",
-                   "Chemical Oxygen Demand (COD)" = "Chemical Oxygen Demand (COD)",
-                   "Copper, Total (Recoverable)" = "Copper, Total (Recoverable)",
-                   "Cyanide, Total (as CN)" = "Cyanide, Total (as CN)",                     
-                   "Iron, Total (Recoverable)" = "Iron, Total (Recoverable)",
-                   "Lead, Total (Recoverable)" = "Lead, Total (Recoverable)",           
-                   "Magnesium, Total (Recoverable)" = "Magnesium, Total (Recoverable)", 
-                   "Nitrite Plus Nitrate (as N)" = "Nitrite Plus Nitrate (as N)", 
+                     "Biochemical Oxygen Demand",
+                   "Cadmium, Total (Recoverable)" = "Cadmium, Total",
+                   "Chemical Oxygen Demand (COD)" = "Chemical Oxygen Demand",
+                   "Copper, Total (Recoverable)" = "Copper, Total",
+                   "Cyanide, Total (as CN)" = "Cyanide, Total",                     
+                   "Iron, Total (Recoverable)" = "Iron, Total",
+                   "Lead, Total (Recoverable)" = "Lead, Total",           
+                   "Magnesium, Total (Recoverable)" = "Magnesium, Total", 
+                   "Nitrite Plus Nitrate (as N)" = "Nitrite Plus Nitrate", 
                    "Oil and Grease" = "Oil and Grease", 
                    "pH" = "pH",
-                   "Phosphorus, Total (as P)" = "Phosphorus, Total (as P)", 
-                   "Selenium, Total (Recoverable)" = "Selenium, Total (Recoverable)",       
-                   "Total Suspended Solids (TSS)" = "Total Suspended Solids (TSS)",         
-                   "Zinc, Total (Recoverable)" = "Zinc, Total (Recoverable)"), 
+                   "Phosphorus, Total (as P)" = "Phosphorus, Total", 
+                   "Selenium, Total (Recoverable)" = "Selenium, Total",       
+                   "Total Suspended Solids (TSS)" = "Total Suspended Solids",         
+                   "Zinc, Total (Recoverable)" = "Zinc, Total"), 
     selected = "All Pollutants")
 ```
 
@@ -89,18 +90,18 @@ Row {.tabset data-height=650}
 selected_data <- sites
 
 mapData <- shiny::reactive({
-  if (as.character(input$Level) == "All Level 1 and Level 2 Facilities") {
+  if (as.character(input$Facilities) == "All Active Permitted Facilities") {
     
   } else {
     selected_data <- sites %>%
-      dplyr::filter(Level == as.character(input$Level))
+      dplyr::filter(!is.na(LevPoll))
   }
   
   if (as.character(input$Pollutant) == "All Pollutants") {
     
   } else {
     selected_data <- selected_data %>%
-      dplyr::filter(Pollutant == as.character(input$Pollutant))
+      dplyr::filter(grepl(as.character(input$Pollutant), LevPoll))
   }
 
   selected_data
@@ -137,13 +138,13 @@ leaflet::renderLeaflet({
     
     m <- m %>%
       addMarkers(data = mapData(), clusterOptions = markerClusterOptions(),
-                 popup = ~paste0('<b>', Facility, '</b></br>',
+                 popup = ~paste0('<b>', FACILITY_NAME, '</b></br>',
                                  'WDID: ', WDID, '</br>',
-                                 Facility.Address, '</br>',
-                                 Facility.City, ', CA ',
-                                 Facility.Zip, '</br>',
-                                 '<i>', Pollutant, '</br>',
-                                 Level, '</i>'))
+                                 FACILITY_ADDRESS, '</br>',
+                                 FACILITY_CITY, ', CA ',
+                                 FACILITY_ZIP, '</br>',
+                                 '<b>Elevated Pollutants</b>:</br>',
+                                 '<i>', LevPoll, '</br></i>'))
     
     m <- m %>% addPolygons(data=wma, stroke = TRUE, weight = 0.25, 
                            smoothFactor = 0.5, fillOpacity = 0.35,
@@ -170,11 +171,16 @@ DT::renderDataTable({
 Row {data-height=350}
 -----------------------------------------------------------------------
 
-### Bar Graph
+### Number of Facilities by Standard Industrial Classification (SIC) Code
 
 ```{r}
 
-
+DT::renderDataTable({
+  sic_frequency <- plyr::count(mapData(), 'PRIMARY_SIC')
+  names(sic_frequency) <- c("Primary SIC Code", "Number")
+  
+  DT::datatable(sic_frequency[order(-sic_frequency$Number),], rownames = FALSE, options = list(dom = 't', scrollY = "200px"))
+})
 
 ```
 

@@ -29,7 +29,6 @@ elevated_total <- elevated %>%
   dplyr::group_by(WDID) %>%
   dplyr::summarize_all(funs(trimws(paste(., collapse = '; '))))
 
-
 combined_data <- dplyr::left_join(active, elevated_total, by = "WDID")
 
 saveRDS(combined_data, file = "data/facility-data-2019-12-04.RDS")
