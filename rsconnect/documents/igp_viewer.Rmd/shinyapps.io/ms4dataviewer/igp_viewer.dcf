@@ -1,0 +1,12 @@
+name: igp_viewer
+title: igp_viewer
+username:
+account: ms4dataviewer
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1567233
+bundleId: 3499323
+url: https://ms4dataviewer.shinyapps.io/igp_viewer/
+when: 1597100626.95088
+asMultiple: FALSE
+asStatic: FALSE

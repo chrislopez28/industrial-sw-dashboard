@@ -18,7 +18,7 @@ library(readxl)
 library(DT)
 library(shinydashboard)
 library(ggplot2)
-library(plotly)
+
 
 # Load polygons of watershed management areas
 wma <- geojsonio::geojson_read("json/wma.json", what = "sp")
