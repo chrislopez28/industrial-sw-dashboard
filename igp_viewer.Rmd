@@ -33,14 +33,9 @@ pal <- colorFactor(c("#1F77B4", "#AEC7E8", "#FF7F0E", "#FFBB78",
 
 # Load csv of IGP facility data
 sites <- readRDS("data/facility-data-2019-12-04.RDS")
-  
-# read_excel("data/smarts_data_2019-12-04.xls", col_types = "text") %>% as.data.frame()
-
 
 sites$Latitude <- as.numeric(sites$FACILITY_LATITUDE)
 sites$Longitude <- as.numeric(sites$FACILITY_LONGITUDE)
-#names(sites) <- make.names(names(sites))
-#sites$Level <- factor(sites$Level)
 ```
 
 Inputs {.sidebar data-width=300}
@@ -114,13 +109,6 @@ mapData <- shiny::reactive({
     
 })
 
-# summaryData <- reactive({
-#   mapData() %>%
-#     dplyr::group_by(Primary.SIC.Code) %>%
-#     dplyr::summarize(
-#       count = n())
-# })
-
 graphData <- shiny::reactive({
   sites %>%
     dplyr::filter(Pollutant == as.character(input$Pollutant))
@@ -137,10 +125,10 @@ pollutantFilter <- shiny::reactive({
 leaflet::renderLeaflet({
   if (nrow(mapData()) == 0) {
     m <- leaflet() %>%
-      addProviderTiles("Hydda.Full")
+      addProviderTiles("Esri.WorldStreetMap")
   } else {
     m <- leaflet() %>%
-      addProviderTiles("Hydda.Full")
+      addProviderTiles("Esri.WorldStreetMap")
     
     m <- m %>%
       addMarkers(data = mapData(), clusterOptions = markerClusterOptions(),
