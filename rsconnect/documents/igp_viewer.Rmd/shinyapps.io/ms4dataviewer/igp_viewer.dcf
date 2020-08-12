@@ -5,8 +5,8 @@ account: ms4dataviewer
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1567233
-bundleId: 3499323
+bundleId: 3499374
 url: https://ms4dataviewer.shinyapps.io/igp_viewer/
-when: 1597100626.95088
+when: 1597101797.35707
 asMultiple: FALSE
 asStatic: FALSE
